@@ -1,10 +1,12 @@
 import argparse
 import logging
 import os
+from pathlib import Path
 import sys
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 from model.config import E6TransCNNConfig
 from model.e6trans_cnn import E6TransCNN
 from model.utils.dataset import E6TransDataset
@@ -16,8 +18,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 def get_args():
     parser = argparse.ArgumentParser(description="E6TransCNN Training Pipeline")
     parser.add_argument("--phase", type=str, required=True, choices=["ssl", "classifier"])
-    parser.add_argument("--data_dir", type=str, default="raw")
-    parser.add_argument("--vocab_path", type=str, default="vocab/vocabularies.json")
+    parser.add_argument("--data_dir", type=str, default="dataset/raw")
+    parser.add_argument("--vocab_path", type=str, default="dataset/vocab/vocabularies.json")
     parser.add_argument("--checkpoint_dir", type=str, default="checkpoints")
     parser.add_argument("--resume", type=str, default=None)
     parser.add_argument("--epochs", type=int, default=100)
@@ -36,7 +38,8 @@ def train_epoch_ssl(model, dataloader, optimizer, scaler, device):
     model.train()
     total_loss = 0.0
     
-    for batch_idx, batch in enumerate(dataloader):
+    progress_bar = tqdm(dataloader, desc="Train SSL", leave=False)
+    for batch_idx, batch in enumerate(progress_bar):
         imgs = batch["image"].to(device)
         optimizer.zero_grad()
         
@@ -49,6 +52,10 @@ def train_epoch_ssl(model, dataloader, optimizer, scaler, device):
         scaler.update()
         
         total_loss += loss.item()
+        progress_bar.set_postfix(
+            loss=f"{loss.item():.6f}",
+            avg=f"{total_loss / (batch_idx + 1):.6f}"
+        )
         
     return total_loss / len(dataloader)
 
@@ -57,11 +64,16 @@ def val_epoch_ssl(model, dataloader, device):
     total_loss = 0.0
     
     with torch.no_grad():
-        for batch in dataloader:
+        progress_bar = tqdm(dataloader, desc="Val SSL", leave=False)
+        for batch_idx, batch in enumerate(progress_bar):
             imgs = batch["image"].to(device)
             pred, mask, target = model.forward_ssl(imgs)
             loss = calculate_mae_loss(pred, target, mask)
             total_loss += loss.item()
+            progress_bar.set_postfix(
+                loss=f"{loss.item():.6f}",
+                avg=f"{total_loss / (batch_idx + 1):.6f}"
+            )
             
     return total_loss / len(dataloader)
 
@@ -70,7 +82,8 @@ def train_epoch_classifier(model, dataloader, optimizer, scaler, balancer, crite
     balancer.train()
     total_loss = 0.0
     
-    for batch in dataloader:
+    progress_bar = tqdm(dataloader, desc="Train Classifier", leave=False)
+    for batch in progress_bar:
         imgs = batch["image"].to(device)
         rating_targets = batch["rating"].to(device)
         gender_targets = batch["gender"].to(device)
@@ -97,6 +110,14 @@ def train_epoch_classifier(model, dataloader, optimizer, scaler, balancer, crite
         scaler.update()
         
         total_loss += joint_loss.item()
+        progress_bar.set_postfix(
+            joint=f"{joint_loss.item():.4f}",
+            rating=f"{loss_rating.item():.4f}",
+            gender=f"{loss_gender.item():.4f}",
+            species=f"{loss_species.item():.4f}",
+            general=f"{loss_general.item():.4f}",
+            meta=f"{loss_meta.item():.4f}"
+        )
         
     return total_loss / len(dataloader)
 
@@ -106,7 +127,8 @@ def val_epoch_classifier(model, dataloader, balancer, criterion_asl, criterion_b
     total_loss = 0.0
     
     with torch.no_grad():
-        for batch in dataloader:
+        progress_bar = tqdm(dataloader, desc="Val Classifier", leave=False)
+        for batch in progress_bar:
             imgs = batch["image"].to(device)
             rating_targets = batch["rating"].to(device)
             gender_targets = batch["gender"].to(device)
@@ -126,6 +148,14 @@ def val_epoch_classifier(model, dataloader, balancer, criterion_asl, criterion_b
             joint_loss = balancer(losses)
             
             total_loss += joint_loss.item()
+            progress_bar.set_postfix(
+                joint=f"{joint_loss.item():.4f}",
+                rating=f"{loss_rating.item():.4f}",
+                gender=f"{loss_gender.item():.4f}",
+                species=f"{loss_species.item():.4f}",
+                general=f"{loss_general.item():.4f}",
+                meta=f"{loss_meta.item():.4f}"
+            )
             
     return total_loss / len(dataloader)
 
