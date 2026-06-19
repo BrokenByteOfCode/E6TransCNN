@@ -1,1 +1,4 @@
-dataset/
+raw/
+vocab/
+__pycache__/
+checkpoints/

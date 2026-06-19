@@ -1,0 +1,1 @@
+from model.e6trans_cnn import E6TransCNN
