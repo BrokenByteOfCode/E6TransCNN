@@ -1,3 +1,5 @@
+UPDATE: THIS PROJECT VIOLATES ToS OF E621. FUCK YOU DRAGONFRUIT
+
 # E6TransCNN: Hybrid CNN-Transformer for Digital Art Representation
 
 The **E6TransCNN** is a hybrid CNN-Transformer architecture designed for high-resolution, multi-label classification and self-supervised reconstruction of digital and stylized art. 
