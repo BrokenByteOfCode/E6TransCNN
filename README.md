@@ -1,4 +1,4 @@
-UPDATE: THIS PROJECT VIOLATES ToS OF E621. FUCK YOU DRAGONFRUIT
+UPDATE: THIS PROJECT VIOLATES ToS OF E621. FUCK YOU Dragon Fruit Ventures LLC
 
 # E6TransCNN: Hybrid CNN-Transformer for Digital Art Representation
 
